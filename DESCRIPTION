@@ -11,3 +11,5 @@ Encoding: UTF-8
 LazyData: true
 Depends: R (>= 4.0.1)
 Imports: Seurat (>= 5.0.0)
+URL: https://github.com/mthimma/scib
+BugReports: https://github.com/mthimma/scib/issues
