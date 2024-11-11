@@ -33,3 +33,45 @@ BBKNNIntegration  <- function(object, features = NULL, layers = "counts", conda_
   names(output.list) <- c(new.reduction)
   return(output.list)
 }
+
+
+CONOSIntegration <- function(object, resolution = NULL,  features = NULL, layers = "counts",
+                             new.reduction = "conos", ndims = NULL, verbose = FALSE, ...) {
+
+  if(is.null(resolution)) stop("resolution must be specified")
+  if(is.null(ndims))      stop("ndims must be specified")
+
+  ds_new <- list()
+  batches <- gsub("counts.|data.", "", layers)  %>% sort()
+
+  for(batch in batches){
+
+    out <- GetAssayData(object, paste0("counts.", batch)) %>%
+      CreateSeuratObject()
+
+    out <- SetAssayData(out, layer = "data", GetAssayData(object, paste0("data.", batch)))
+
+    out <- out %>%
+      FindVariableFeatures(verbose = verbose) %>%
+      ScaleData(verbose = verbose) %>%
+      RunPCA(npcs = ndims, verbose = verbose) %>%
+      FindNeighbors(dims = 1:ndims, verbose = verbose) %>%
+      FindClusters(resolution = resolution, verbose = verbose)
+
+    ds_new[[ batch ]] <- out
+    rm(out, batch); gc()
+  }
+
+  require(conos)
+  con <- Conos$new(ds_new, n.cores=4)
+  con$buildGraph(k=20, k.self=30, space='PCA', ncomps=ndims, n.odgenes=2000, matching.method='mNN',
+                 metric='angular', score.component.variance=TRUE, verbose=verbose)
+  con$findCommunities(method=leiden.community, resolution=resolution, verbose=verbose)
+  con$embedGraph(min.dist=0.01, spread=15, min.prob.lower=1e-3, target.dims = ndims)
+
+  suppressWarnings(dr <- CreateDimReducObject(embeddings = con$embedding,
+                                              key = new.reduction))
+  output.list <- list(dr)
+  names(output.list) <- c(new.reduction)
+  return(output.list)
+}

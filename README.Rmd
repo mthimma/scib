@@ -18,7 +18,7 @@ knitr::opts_chunk$set(
 <!-- badges: start -->
 <!-- badges: end -->
 
-The goal of scib (single-cell integration and benchmarking) package is to provide a unified way to perform data integration and benchmarking when the ground truth is available.
+The goal of scib (single-cell integration and benchmarking) is to provide a unified way to perform data integration and benchmarking when the ground truth is available xxx.
 
 
 # INSTALLATION
@@ -139,10 +139,12 @@ This is the workhorse of the data integration process. Here is an example on how
 
 ```{r}
 pbmc.demo <- IntegrateLayers(pbmc.demo,
-                             method         = "HarmonyIntegration",
+                             method         = "CONOSIntegration",
                              orig.reduction = "pca",
-                             new.reduction  = "integrated.harmony",
-                             verbose        = FALSE)
+                             new.reduction  = "integrated.conos",
+                             verbose        = FALSE,
+                             resolution     = 0.80,
+                             ndims          = ndims)
 
 Reductions(pbmc.demo)
 ```
