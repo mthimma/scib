@@ -18,7 +18,7 @@ knitr::opts_chunk$set(
 <!-- badges: start -->
 <!-- badges: end -->
 
-The goal of scib (single-cell integration and benchmarking) is to provide a unified way to perform data integration and benchmarking when the ground truth is available xxx.
+The goal of scib (single-cell integration and benchmarking) is to provide a unified way to perform data integration and benchmarking when the ground truth is available.
 
 
 # INSTALLATION
@@ -27,7 +27,7 @@ You can install the latest version scib like so:
 
 ```{r, eval=FALSE}
 library(remotes)
-install_github("manjulapramila/scib")
+install_github("mthimma/scib")
 ```
 
 # LOAD DATA FOR DEMONSTRATION
@@ -164,9 +164,6 @@ Other available methods that can be used with `IntegrateLayers()`:
 
 
 
-
-
-
 ## Step 4: Cleanup after data integration
 
 After the data integration, we no longer need the counts and data to be split by the batch variable. Therefore we can join the layers. 
@@ -189,6 +186,7 @@ pbmc.demo@assays$RNA@meta.data <- data.frame()
 object.size(pbmc.demo) %>% format(units = "Mb")  # after
 ```
 
+
 ## Step 5: Processing the integrated data
 
 We can now run the non-linear dimension reduction on the integrated embedding and save it. Here the `ndims` is the dimensionality of the dataset that we determined earlier.
@@ -196,24 +194,24 @@ We can now run the non-linear dimension reduction on the integrated embedding an
 ```{r}
 pbmc.demo <- RunUMAP(pbmc.demo,
                      dims           = 1:ndims,
-                     reduction      = "integrated.harmony",
-                     reduction.name = "umap.harmony",
+                     reduction      = "integrated.conos",
+                     reduction.name = "umap.conos",
                      verbose        = FALSE
 ) 
 
-DimPlot(pbmc.demo, reduction = "umap.harmony") +
+DimPlot(pbmc.demo, reduction = "umap.conos", group.by = "seurat_annotations", label = T) +
   NoLegend()
 ```
 
 Alternatively, we can also cluster the cells at certain resolution based on the integrated embedding.
 
 ```{r}
-pbmc.demo <- FindNeighbors(pbmc.demo, reduction = "integrated.harmony")
+pbmc.demo <- FindNeighbors(pbmc.demo, reduction = "integrated.conos")
 
-pbmc.demo <- FindClusters (pbmc.demo, res = 0.8)
+pbmc.demo <- FindClusters (pbmc.demo, res = 0.80)
 
 DimPlot(pbmc.demo,
-        reduction = "umap.harmony",
+        reduction = "umap.conos",
         group.by  = "RNA_snn_res.0.8",
         label     = TRUE) +
   NoLegend()
@@ -226,20 +224,10 @@ DimPlot(pbmc.demo,
 
 We can compare the clusters based on the integrated embedding vs. the ground truth provided by the Seurat authors:
 
-```{r, eval=FALSE}
+```{r}
 tb <- table(pbmc.demo$seurat_annotations, pbmc.demo$RNA_snn_res.0.8)
 
 print.table(tb, zero.print = ".")
-#                0   1   2   3   4   5   6   7   8   9  10  11
-# Naive CD4 T  384  22   . 234   .   .  57   .   .   .   .   .
-# Memory CD4 T  10 337   .  88   .   .  42   .   .   6   .   .
-# CD14+ Mono     .   .   .   . 241 232   .   2   .   .   5   .
-# B              .   1 343   .   .   .   .   .   .   .   .   .
-# CD8 T          .   6   1   .   .   . 129   .   5 130   .   .
-# FCGR3A+ Mono   .   .   .   .   9   1   . 152   .   .   .   .
-# NK             .   .   .   .   .   .   .   . 148   7   .   .
-# DC             .   .   .   .   .   .   .   .   .   .  32   .
-# Platelet       .   .   .   .   .   .   .   .   .   .   .  14
 ```
 
 There are several ways of estimating the performance of the data integration technique. Accuracy is one of the simpler method. 
@@ -255,15 +243,65 @@ However, there are more sophisticated metrics for evaluation which we cover next
 
 ## Evaluate the data integration
 
-```{r, eval=FALSE}
-EvaluateSCIB(pbmc.demo, 
-             reduction   = "integrated.harmony", 
-             groundtruth = "seurat_annotations")
+```{r, include=FALSE}
+# save(pbmc.demo, file = "data/pbmc.demo_final.rda")
 
-kbet
-asw
-lsi
-ari
-lisi
+library(tidyverse)
+library(Seurat)
+library(scib)
+load("data/pbmc.demo_final.rda")
 ```
 
+
+```{r}
+results <- run_eval_metrics(pbmc.demo, 
+                            reduction      = "integrated.conos", 
+                            groundtruth.cn = "seurat_annotations", 
+                            predicted.cn   = "RNA_snn_res.0.8")
+
+data.frame(results)
+```
+
+
+# EVALUATING MULTIPLE METHODS
+
+Let us demonstrate how to run and evaluate mutiple data integration techniques
+
+```{r}
+# Reset the data
+data(pbmc.demo)
+
+# Step 1
+pbmc.demo[["RNA"]] <- split(pbmc.demo[["RNA"]], f = pbmc.demo$batch)
+
+# Step 2
+pbmc.demo <- pbmc.demo %>%
+  NormalizeData(verbose = FALSE) %>%
+  FindVariableFeatures(verbose = FALSE) %>%
+  ScaleData(verbose = FALSE) %>%
+  RunPCA(verbose = FALSE)
+
+ndims <- 10  # determined from Elbowplot(pbmc.demo)
+```
+
+
+```{r}
+methods <- c(harmony = "HarmonyIntegration",
+             conos   = "CONOSIntegration")
+
+for(i in 1:length(methods)){
+  
+  pbmc.demo <- IntegrateLayers(pbmc.demo,
+                               method         = methods[i],
+                               orig.reduction = "pca",
+                               new.reduction  = paste0("integrated.", names(methods)[i]),
+                               verbose        = FALSE,
+                               resolution     = 0.80,
+                               ndims          = ndims)
+  
+  cleanup 
+  
+  postprocessing
+}
+
+```
