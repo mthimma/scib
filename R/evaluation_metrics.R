@@ -59,14 +59,14 @@ run_eval_metrics <- function(object, reduction, groundtruth.cn, predicted.cn){
     ari_celltype         = mclust::adjustedRandIndex(groundtruth, predicted),
     nmi_celltype         = aricode::NMI(groundtruth, predicted),
     asw_celltype         = metrics_ASW (groundtruth, embed),
-    lisi_mean_celltype   = metrics_LISI(groundtruth, embed)$lisi_mean,   # or should it be predicted
+    lisi_mean_celltype   = metrics_LISI(groundtruth, embed)$lisi_mean,
     lisi_median_celltype = metrics_LISI(groundtruth, embed)$lisi_median,
 
     n_batch              = length(unique(batch)),
     ari_batch            = mclust::adjustedRandIndex(batch, predicted),
     nmi_batch            = aricode::NMI(batch, predicted),
     asw_batch            = metrics_ASW (batch, embed),
-    lisi_mean_batch      = metrics_LISI(batch, embed)$lisi_mean,            # or should it be predicted
+    lisi_mean_batch      = metrics_LISI(batch, embed)$lisi_mean,
     lisi_median_batch    = metrics_LISI(batch, embed)$lisi_median,
     kbet_batch           = metrics_kBET(batch, groundtruth, embed)
   )

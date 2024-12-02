@@ -135,7 +135,11 @@ ndims <- 10
 
 ## Step 3: Data integration step
 
-This is the workhorse of the data integration process. Here is an example on how to execute this with Harmony. The Harmony-corrected embedding or integrated embedding is store in the `integrated.harmony` reduction.
+This is the workhorse of the data integration process. Here is an example on how to execute this with Conos. The integrated embedding is stored in the `integrated.conos` reduction.
+
+```{r, echo=FALSE}
+set.seed(123)  # to fix the random seed for consistency in the .md output
+```
 
 ```{r}
 pbmc.demo <- IntegrateLayers(pbmc.demo,
@@ -152,69 +156,74 @@ Reductions(pbmc.demo)
 Other available methods that can be used with `IntegrateLayers()`:
 
 
-| method  | package             | Publication | 
-|---      |---                  |---          |
-| Harmony | Seurat              | ??          |
-| CCA     | Seurat              | ??          |
-| RPCA    | Seurat              | ??          |
-| SCVI    | SeuratWrapper       | ??          |
-| FastMNN | SeuratWrapper       | ??          |
-| LIGER   | scib (this package) | ??          |
-| BBKNN   | scib (this package) | ??          |
+| method             | package        | Publication                              | DOI                                          |
+|---                 |---             |---                                       |---                                           |
+| HarmonyIntegration | Seurat         | Korsunsky, I. et al. Nat Methods (2019). | https://doi.org/10.1038/s41592-019-0619-0    |
+| CCAIntegration2    | Seurat$^*$     | Stuart T. et al. Cell. (2019).           | https:://doi.org/10.1016/j.cell.2019.05.031  |
+| RPCAIntegration2   | Seurat$^*$     | Stuart T. et al. Cell. (2019).           | https:://doi.org/10.1016/j.cell.2019.05.031  |
+| SCVI               | SeuratWrapper  | Lopez, R., Regier, J., Cole, M.B. et al. Deep generative modeling for single-cell transcriptomics. Nat Methods 15, 1053–1058 (2018). https://doi.org/10.1038/s41592-018-0229-2          |
+| FastMNN | SeuratWrapper       |  Haghverdi, L., Lun, A. T. L., Morgan, M. D. & Marioni, J. C. Batch effects in single-cell RNA-sequencing data are corrected by matching mutual nearest neighbors. Nat. Biotechnol. 36, 421–427 (2018).         |
+| LIGER   | scib (this package) |   Liu, J., Gao, C., Sodicoff, J. et al. Jointly defining cell types from multiple single-cell datasets using LIGER. Nat Protoc 15, 3632–3662 (2020). https://doi.org/10.1038/s41596-020-0391-8       |
+| BBKNN   | scib (this package) |  Krzysztof Polański, Matthew D Young, Zhichao Miao, Kerstin B Meyer, Sarah A Teichmann, Jong-Eun Park, BBKNN: fast batch alignment of single cell transcriptomes, Bioinformatics, Volume 36, Issue 3, February 2020        |
 
+$^*$ Minor modifications introduced in SCIB package.
 
-
-## Step 4: Cleanup after data integration
-
-After the data integration, we no longer need the counts and data to be split by the batch variable. Therefore we can join the layers. 
-
-```{r}
-Layers(pbmc.demo)  # before
-
-pbmc.demo <- JoinLayers(pbmc.demo)
-
-Layers(pbmc.demo)  # after
-```
-The `scale.data` layer is a non-sparse matrix and not needed for further analysis. Therefore, we can remove this layer to reduce the object size.
-
-```{r}
-object.size(pbmc.demo) %>% format(units = "Mb")  # before
-
-pbmc.demo[["RNA"]]$scale.data  <- NULL
-pbmc.demo@assays$RNA@meta.data <- data.frame()
-
-object.size(pbmc.demo) %>% format(units = "Mb")  # after
-```
-
-
-## Step 5: Processing the integrated data
+## Step 4: Processing the integrated data
 
 We can now run the non-linear dimension reduction on the integrated embedding and save it. Here the `ndims` is the dimensionality of the dataset that we determined earlier.
 
-```{r}
+```{r, warning=FALSE}
 pbmc.demo <- RunUMAP(pbmc.demo,
                      dims           = 1:ndims,
                      reduction      = "integrated.conos",
                      reduction.name = "umap.conos",
                      verbose        = FALSE
-) 
-
-DimPlot(pbmc.demo, reduction = "umap.conos", group.by = "seurat_annotations", label = T) +
-  NoLegend()
+)
 ```
 
-Alternatively, we can also cluster the cells at certain resolution based on the integrated embedding.
+Next we cluster the cells at certain resolution based on the integrated embedding. We chose `res = 0.80` here but you should determine this for your own dataset.
 
 ```{r}
 pbmc.demo <- FindNeighbors(pbmc.demo, reduction = "integrated.conos")
 
-pbmc.demo <- FindClusters (pbmc.demo, res = 0.80)
+pbmc.demo <- FindClusters (pbmc.demo, res = 0.80, cluster.name = "conos.cluster")
 
 DimPlot(pbmc.demo,
         reduction = "umap.conos",
-        group.by  = "RNA_snn_res.0.8",
+        group.by  = "conos.cluster",
         label     = TRUE) +
   NoLegend()
+```
+
+
+## (optional) Step 5: Cleanup after data integration
+
+The split layers counts and data can be joined after the data integration.
+
+
+After the data integration, we no longer need the counts and data to be split by the batch variable. 
+Similarly, we do not need the `scale.data` layer which being a non-sparse matrix takes a lot of space.
+
+```{r}
+Layers(pbmc.demo)
+
+object.size(pbmc.demo) %>% format(units = "Mb")
+```
+
+Therefore we can join the layers and remove the `scale.data` to reduce object size.
+
+```{r}
+pbmc.demo <- JoinLayers(pbmc.demo)
+
+pbmc.demo[["RNA"]]$scale.data  <- NULL
+```
+
+We can confirm this by checking the layers and observing the reduction in object size (from 100Mb to 60Mb).
+
+```{r}
+Layers(pbmc.demo)  
+
+object.size(pbmc.demo) %>% format(units = "Mb")  
 ```
 
 
@@ -224,84 +233,136 @@ DimPlot(pbmc.demo,
 
 We can compare the clusters based on the integrated embedding vs. the ground truth provided by the Seurat authors:
 
-```{r}
-tb <- table(pbmc.demo$seurat_annotations, pbmc.demo$RNA_snn_res.0.8)
+```{r, eval = FALSE}
+tb <- table(pbmc.demo$seurat_annotations, pbmc.demo$conos.cluster)
 
 print.table(tb, zero.print = ".")
+#                0   1   2   3   4   5   6   7   8   9  10  11  12  13  14  15  16
+# Naive CD4 T    .   . 161 158  23 139  24  21  45   .   1 124   .   1   .   .   .
+# Memory CD4 T   .   .  23  18  24  34 133 128 111   .   .  12   .   .   .   .   .
+# CD14+ Mono     .  43   .   .   .   .   .   .   . 146   .   . 119   .  97  75   .
+# B            271   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .  73
+# CD8 T          1   .   .   5 127   .   7  10   .   . 114   1   .   6   .   .   .
+# FCGR3A+ Mono   . 162   .   .   .   .   .   .   .   .   .   .   .   .   .   .   .
+# NK             .   .   .   .   .   .   .   .   .   .  33   .   . 122   .   .   .
+# DC             3   .   .   .   .   .   .   .   .   .   .   .  10   .   8  11   .
 ```
 
 There are several ways of estimating the performance of the data integration technique. Accuracy is one of the simpler method. 
 
-1. Assign every cluster to one label using simple majority (e.g. 0 = Naive CD4 T, 1 = Memory CD4 T, 2 = B, ..., 11 = Platelet). 
+1. Assign every cluster to one label using simple majority (e.g. 0 = B, 1 = FCGR3A+ Mono). 
 
-2. Add up the numbers that correspond to this majority based assignment (384 + 337 + 343 + 234 + 241 + 232 + 129 + 152 + 148 + 130 + 32 + 14). This totals to 2,376 here.
+2. Add up the numbers that correspond to this majority based assignment: 271 + 162 + 161 + 158 + 127 + 139 + 133 + 128 + 111 + 146 + 114 + 124 + 119 + 122 +  + 97 +  + 75 +  + 73. This totals to 2260.
 
-3. Divide by the total number of cells. i.e. 2376 / 2638 which gives 90%.
+3. Divide by the total number of cells. i.e. 2260 / 2638 which gives 85.7%.
 
 However, there are more sophisticated metrics for evaluation which we cover next.
 
 
 ## Evaluate the data integration
 
-```{r, include=FALSE}
-# save(pbmc.demo, file = "data/pbmc.demo_final.rda")
-
-library(tidyverse)
-library(Seurat)
-library(scib)
-load("data/pbmc.demo_final.rda")
-```
-
-
-```{r}
+```{r, eval = FALSE}
 results <- run_eval_metrics(pbmc.demo, 
                             reduction      = "integrated.conos", 
                             groundtruth.cn = "seurat_annotations", 
-                            predicted.cn   = "RNA_snn_res.0.8")
+                            predicted.cn   = "conos.cluster")
 
 data.frame(results)
+#                         results
+# n_celltype           9.00000000
+# ari_celltype         0.35552785
+# nmi_celltype         0.52750372
+# asw_celltype         0.30354695
+# lisi_mean_celltype   0.14321150
+# lisi_median_celltype 0.04628172
+# n_batch              3.00000000
+# ari_batch            0.11329078
+# nmi_batch            0.20922764
+# asw_batch            0.01923986
+# lisi_mean_batch      0.22436669
+# lisi_median_batch    0.02954152
+# kbet_batch           0.12689394
 ```
 
 
 # EVALUATING MULTIPLE METHODS
 
-Let us demonstrate how to run and evaluate mutiple data integration techniques
+## Data preparation
+
+Let us demonstrate how to run and evaluate mutiple data integration techniques. Let us reset the pbmc.demo data first.
 
 ```{r}
-# Reset the data
-data(pbmc.demo)
+rm(pbmc.demo)
+data(pbmc.demo, package = "scib")
+```
 
-# Step 1
+Next we can run through Steps 1 - 2 to prepare the data again
+```{r}
 pbmc.demo[["RNA"]] <- split(pbmc.demo[["RNA"]], f = pbmc.demo$batch)
 
-# Step 2
 pbmc.demo <- pbmc.demo %>%
   NormalizeData(verbose = FALSE) %>%
   FindVariableFeatures(verbose = FALSE) %>%
   ScaleData(verbose = FALSE) %>%
   RunPCA(verbose = FALSE)
 
-ndims <- 10  # determined from Elbowplot(pbmc.demo)
+ndims <- 10  # determined from Elbowplot(pbmc.demo) earlier
 ```
 
 
-```{r}
-methods <- c(harmony = "HarmonyIntegration",
-             conos   = "CONOSIntegration")
+## Multi method evaluation
+
+Let's demonstrate Steps 3 - 4 with three methods.
+
+```{r, warnings=FALSE, message=FALSE}
+methods <- c(#harmony = "HarmonyIntegration",
+             #conos   = "CONOSIntegration",
+             #bbknn   = "BBKNNIntegration"
+             #cca     = "CCAIntegration2",
+             rpca    = "RPCAIntegration2"
+            #fastmnn = "FASTMNNIntegration")
+             )
+
+big.res <- list()
 
 for(i in 1:length(methods)){
   
+  new.reduction.name <- names(methods)[i]
+  new.cluster.name   <- paste0( names(methods)[i], ".cluster" )
+  
+  ## Step 3
   pbmc.demo <- IntegrateLayers(pbmc.demo,
                                method         = methods[i],
                                orig.reduction = "pca",
-                               new.reduction  = paste0("integrated.", names(methods)[i]),
+                               new.reduction  = new.reduction.name,
                                verbose        = FALSE,
                                resolution     = 0.80,
-                               ndims          = ndims)
+                               ndims          = ndims,
+                               conda_env      = "/home/manjula/miniforge3/envs/sc" )
   
-  cleanup 
+  ## Step 4
+  pbmc.demo <- FindNeighbors(pbmc.demo, reduction = new.reduction.name)
+  pbmc.demo <- FindClusters (pbmc.demo, res = 0.80, cluster.name = new.cluster.name)
+  pbmc.demo$seurat_clusters <- NULL
+
+  ## Evaluation step
+  res <- run_eval_metrics(pbmc.demo, 
+                          reduction      = new.reduction.name, 
+                          groundtruth.cn = "seurat_annotations", 
+                          predicted.cn   = new.cluster.name)
   
-  postprocessing
+  res <- data.frame(res)
+  colnames(res) <- new.reduction.name
+  big.res[[i]]  <- res
+  
+  ## Cleanup
+  rm(new.reduction.name, new.cluster.name, res)
+  pbmc.demo@graphs$RNA_nn  <- NULL
+  pbmc.demo@graphs$RNA_snn <- NULL
 }
 
+big.res <- do.call("cbind", big.res)
+big.res
 ```
+
+We can join the count and data layers and remove the `scale.data` layer as demonstrated in Step 5 if we have completed our testing.
