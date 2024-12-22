@@ -3,7 +3,8 @@ output: github_document
 ---
 
 ```{r, include = FALSE}
-knitr::opts_chunk$set(
+knitr::opts_chunk
+set(
   collapse = TRUE,
   comment = "#>",
   fig.path = "man/figures/README-",
@@ -37,7 +38,8 @@ We will load the `pbmc.demo` dataset that is used in the fundamental Seurat vign
 ```{r}
 library(tidyverse)
 library(Seurat)
-
+library(SeuratWrappers)
+library(rliger)
 library(scib)
 data(pbmc.demo)
 pbmc.demo
@@ -142,7 +144,7 @@ set.seed(123)  # to fix the random seed for consistency in the .md output
 ```
 
 ```{r}
-pbmc.demo <- IntegrateLayers(pbmc.demo,
+pbmc.demo <- IntegrateLayers2(pbmc.demo,
                              method         = "CONOSIntegration",
                              orig.reduction = "pca",
                              new.reduction  = "integrated.conos",
@@ -161,10 +163,10 @@ Other available methods that can be used with `IntegrateLayers()`:
 | HarmonyIntegration | Seurat         | Korsunsky, I. et al. Nat Methods (2019). | https://doi.org/10.1038/s41592-019-0619-0    |
 | CCAIntegration2    | Seurat$^*$     | Stuart T. et al. Cell. (2019).           | https:://doi.org/10.1016/j.cell.2019.05.031  |
 | RPCAIntegration2   | Seurat$^*$     | Stuart T. et al. Cell. (2019).           | https:://doi.org/10.1016/j.cell.2019.05.031  |
-| SCVI               | SeuratWrapper  | Lopez, R., Regier, J., Cole, M.B. et al. Deep generative modeling for single-cell transcriptomics. Nat Methods 15, 1053–1058 (2018). https://doi.org/10.1038/s41592-018-0229-2          |
-| FastMNN | SeuratWrapper       |  Haghverdi, L., Lun, A. T. L., Morgan, M. D. & Marioni, J. C. Batch effects in single-cell RNA-sequencing data are corrected by matching mutual nearest neighbors. Nat. Biotechnol. 36, 421–427 (2018).         |
-| LIGER   | scib (this package) |   Liu, J., Gao, C., Sodicoff, J. et al. Jointly defining cell types from multiple single-cell datasets using LIGER. Nat Protoc 15, 3632–3662 (2020). https://doi.org/10.1038/s41596-020-0391-8       |
-| BBKNN   | scib (this package) |  Krzysztof Polański, Matthew D Young, Zhichao Miao, Kerstin B Meyer, Sarah A Teichmann, Jong-Eun Park, BBKNN: fast batch alignment of single cell transcriptomes, Bioinformatics, Volume 36, Issue 3, February 2020        |
+| SCVI               | SeuratWrapper  | Lopez, R.et al. Nat Methods (2018)| https://doi.org/10.1038/s41592-018-0229-2  |        |
+| FastMNN | SeuratWrapper       |  Haghverdi, L. et al. Nat. Biotechnol. (2018).         |DOI for FastMNN|
+| LIGER   | scib (this package) |   Liu, J.et al. Nat Protocols (2020) | https://doi.org/10.1038/s41596-020-0391-8  |     |
+| BBKNN   | scib (this package) |  Krzysztof Polański et al. Bioinformatics, 2020 | DOI for BBKNN|        |
 
 $^*$ Minor modifications introduced in SCIB package.
 
@@ -317,10 +319,15 @@ Let's demonstrate Steps 3 - 4 with three methods.
 ```{r, warnings=FALSE, message=FALSE}
 methods <- c(#harmony = "HarmonyIntegration",
              #conos   = "CONOSIntegration",
-             #bbknn   = "BBKNNIntegration"
-             #cca     = "CCAIntegration2",
-             rpca    = "RPCAIntegration2"
-            #fastmnn = "FASTMNNIntegration")
+             #cca     = "CCAIntegration",
+             #rpca    = "RPCAIntegration",
+             scmc     = "SCMCIntegration"
+             #liger     = "LIGERIntegration",
+             #fastmnn   = "FastMNNIntegration",
+             #bbknn   = "BBKNNIntegration",
+             #scvi    = "scVIIntegration2"
+             #scanorama = "SCANORAMAIntegration"
+             
              )
 
 big.res <- list()
@@ -331,14 +338,14 @@ for(i in 1:length(methods)){
   new.cluster.name   <- paste0( names(methods)[i], ".cluster" )
   
   ## Step 3
-  pbmc.demo <- IntegrateLayers(pbmc.demo,
+  pbmc.demo <- IntegrateLayers2(pbmc.demo,
                                method         = methods[i],
                                orig.reduction = "pca",
                                new.reduction  = new.reduction.name,
                                verbose        = FALSE,
-                               resolution     = 0.80,
                                ndims          = ndims,
-                               conda_env      = "/home/manjula/miniforge3/envs/sc" )
+                               conda_env       = "/home/manjula/miniforge3/envs/sc" 
+                               )
   
   ## Step 4
   pbmc.demo <- FindNeighbors(pbmc.demo, reduction = new.reduction.name)

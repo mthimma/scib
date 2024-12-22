@@ -1,3 +1,29 @@
+IntegrateLayers2 <- function(object,
+                             method,
+                             orig.reduction = "pca",
+                             new.reduction,
+                             verbose        = FALSE,
+                             resolution     = 0.80,
+                             ndims          = ndims,
+                             conda_env      = "/home/manjula/miniforge3/envs/sc" ) {
+  # original methods
+  if(method %in% c("HarmonyIntegration", "CCAIntegration", "RPCAIntegration", "FastMNNIntegration") ){
+    out <- IntegrateLayers(object = object, method = method, orig.reduction = orig.reduction, new.reduction = new.reduction)
+  }
+  if (method %in% c("BBKNNIntegration", "SCANORAMAIntegration", "scVIIntegration2")) {
+   out <-  IntegrateLayers(object = object, method = method,  orig.reduction = orig.reduction, new.reduction = new.reduction,
+                    conda_env = conda_env)
+  }
+
+   if(method %in% c("CONOSIntegration", "LIGERIntegration","SCMCIntegration") ){
+    out <- IntegrateLayers(object = object, method = method, orig.reduction = orig.reduction, new.reduction = new.reduction,
+                           resolution = resolution, ndims = ndims)
+  }
+
+  return(out)
+}
+
+
 BBKNNIntegration  <- function(object, features = NULL, layers = "counts", conda_env = NULL,
                               new.reduction = "bbknn", ndims = 30, ...) {
 
@@ -77,187 +103,138 @@ CONOSIntegration <- function(object, resolution = NULL,  features = NULL, layers
 }
 
 
-CCAIntegration2 <- function(
-    object = NULL,
-    assay = NULL,
-    layers = NULL,
-    orig = NULL,
-    new.reduction = 'integrated.dr',
-    reference = NULL,
-    features = NULL,
-    normalization.method = c("LogNormalize", "SCT"),
-    dims = 1:30,
-    k.filter = NA,
-    scale.layer = 'scale.data',
-    dims.to.integrate = NULL,
-    k.weight = 100,
-    weight.reduction = NULL,
-    sd.weight = 1,
-    sample.tree = NULL,
-    preserve.order = FALSE,
-    verbose = TRUE,
-    ...
-) {
-  op <- options(Seurat.object.assay.version = "v3", Seurat.object.assay.calcn = FALSE)
-  on.exit(expr = options(op), add = TRUE)
-  normalization.method <- match.arg(arg = normalization.method)
-  features <- features %||% SelectIntegrationFeatures5(object = object)
-  assay <- assay %||% 'RNA'
-  layers <- layers %||% Layers(object, search = 'data')
-  if (normalization.method == 'SCT') {
-    #create grouping variables
-    groups <- CreateIntegrationGroups(object, layers = layers, scale.layer = scale.layer)
-    object.sct <- CreateSeuratObject(counts = object, assay = 'SCT')
-    object.sct$split <- groups[,1]
-    object.list <- SplitObject(object = object.sct,split.by = 'split')
-    object.list  <- PrepSCTIntegration(object.list, anchor.features = features)
+
+scVIIntegration2 <- function(object, features = NULL, layers = "counts",
+                             conda_env = NULL, new.reduction = "integrated.dr", ndims = 30,
+                             nlayers = 2, gene_likelihood = "nb", max_epochs = NULL, num_workers = 7, ...){
+
+  reticulate::use_condaenv(conda_env, required = TRUE)
+  sc <- reticulate::import("scanpy", convert = FALSE)
+  scvi <- reticulate::import("scvi", convert = FALSE)
+  scvi$settings$dl_num_workers <- as.integer(num_workers)
+  scvi$settings$num_threads    <- as.integer(num_workers)
+
+  anndata <- reticulate::import("anndata", convert = FALSE)
+  scipy <- reticulate::import("scipy", convert = FALSE)
+  if (is.null(max_epochs)) {
+    max_epochs <- reticulate::r_to_py(max_epochs)
   } else {
-    object.list <- list()
-    for (i in seq_along(along.with = layers)) {
-      if (inherits(x = object[layers[i]], what = "IterableMatrix")) {
-        warning("Converting BPCells matrix to dgCMatrix for integration ",
-                "as on-disk CCA Integration is not currently supported", call. = FALSE, immediate. = TRUE)
-        counts <- as(object = object[layers[i]][features, ],
-                     Class = "dgCMatrix")
-      }
-      else {
-        counts <- object[layers[i]][features, ]
-      }
-      object.list[[i]] <- CreateSeuratObject(counts = counts)
-      if (inherits(x = object[scale.layer], what = "IterableMatrix")) {
-        scale.data.layer <- as.matrix(object[scale.layer][features,
-                                                          Cells(object.list[[i]])])
-        object.list[[i]][["RNA"]]$scale.data <- scale.data.layer
-      }
-      else {
-        object.list[[i]][["RNA"]]$scale.data <- object[scale.layer][features, Cells(object.list[[i]])]
-      }
-      object.list[[i]][['RNA']]$counts <- NULL
-    }
+    max_epochs <- as.integer(max_epochs)
   }
 
-  anchor <- FindIntegrationAnchors(object.list = object.list,
-                                   anchor.features = features,
-                                   scale = FALSE,
-                                   reduction = 'cca',
-                                   normalization.method = normalization.method,
-                                   dims = dims,
-                                   k.filter = k.filter,
-                                   reference = reference,
-                                   verbose = verbose                        # removed the ... here
-  )
+  batches <- SeuratWrappers:::.FindBatches(object, layers = layers)
 
-  suppressWarnings({
-    anchor@object.list <- lapply(anchor@object.list, function(x) {
-      x <- DietSeurat(x, features = features[1:2])
-      return(x)
-    })
-  }, classes = "dimWarning")
+  object <- JoinLayers(object = object, layers = "counts")
+  adata <- sc$AnnData(X = scipy$sparse$csr_matrix(Matrix::t(LayerData(object, layer = "counts")[features, ])),
+                      obs = batches,
+                      var = object[[]][features,
+                      ])
+  scvi$model$SCVI$setup_anndata(adata, batch_key = "batch")
+  model <- scvi$model$SCVI(adata = adata, n_latent = as.integer(x = ndims),
+                           n_layers = as.integer(x = nlayers), gene_likelihood = gene_likelihood)
+  model$train(max_epochs = max_epochs)
+  latent <- model$get_latent_representation()
+  latent <- as.matrix(latent)
+  rownames(latent) <- reticulate::py_to_r(adata$obs$index$values)
+  colnames(latent) <- paste0(new.reduction, "_", 1:ncol(latent))
+  suppressWarnings(latent.dr <- CreateDimReducObject(embeddings = latent,
+                                                     key = new.reduction))
+  output.list <- list(latent.dr)
+  names(output.list) <- new.reduction
+  return(output.list)
+}
 
-  object_merged <- IntegrateEmbeddings(anchorset = anchor,
-                                       reductions = orig,
-                                       new.reduction.name = new.reduction,
-                                       dims.to.integrate = dims.to.integrate,
-                                       k.weight = k.weight,
-                                       weight.reduction = weight.reduction,
-                                       sd.weight = sd.weight,
-                                       sample.tree = sample.tree,
-                                       preserve.order = preserve.order,
-                                       verbose = verbose
-  )
-  output.list <- list(object_merged[[new.reduction]])
+SCMCIntegration  <- function(object, features = NULL, layers = "counts", new.reduction = "scmc",
+                             ndims = ndims, resolution = resolution, ...){
+
+  object <- SplitObject(object, split.by = "batch")
+
+  ## Step2. Identify putative clusters for each dataset
+  object.list <- identifyNeighbors(object, force.pca=FALSE, nDims.pca=ndims)
+  object.list <- identifyClusters(object.list, resolution = resolution, nDims.consensus = ndims)
+
+  ## Step3. Detect cluster-specific cells with high confident
+  features.integration <- identifyIntegrationFeatures(object.list)
+  object.list <- identifyConfidentCells(object.list, features.integration)
+
+  ## Step4. Identify marker genes associated with the putative cell clusters in each dataset
+  object.list <- identifyMarkers(object.list)
+
+  ## Step5. Learn technical variation between any two datasets
+  structured_mat <- learnTechnicalVariation(object.list, features.integration)
+
+  ## Step 6. Learn a shared embedding of cells across all datasets after removing technical variation
+  combined <- merge(object.list[[1]], object.list[2:length( object.list)])
+  combined@meta.data <- combined@meta.data %>% select(-contains("_snn_res"))
+  VariableFeatures(combined) <- features.integration
+
+  combined <- JoinLayers(combined)
+  combined <- scMC::integrateData(combined, structured_mat, nDims.scMC = ndims)
+  # output.list <- list(Embeddings(combined, reduction = "scMC"))
+  # names(output.list) <- new.reduction
+   return(combined)
+}
+
+
+
+## LIGER
+LIGERIntegration <- function(object, ndims = NULL, new.reduction = "liger", ...) {
+
+  if(is.null(ndims)) stop("ndims must be supplied")
+
+  obj <- object %>%
+    CreateSeuratObject() %>%
+    rliger::normalize(layer = "counts") %>%
+    rliger::selectGenes() %>%
+    rliger::scaleNotCenter()
+
+  obj <- obj %>%
+    runINMF(k = ndims) %>%
+    quantileNorm()
+
+  latent <- as.matrix(obj@reductions$inmfNorm@cell.embeddings)
+
+  colnames(latent) <- paste0(new.reduction, "_", 1:ncol(latent))
+
+  suppressWarnings(latent.dr <- CreateDimReducObject(embeddings = latent,
+                                                     key = new.reduction))
+  output.list <- list(latent.dr)
   names(output.list) <- c(new.reduction)
   return(output.list)
 }
 
-RPCAIntegration2 <- function(
-    object = NULL,
-    assay = NULL,
-    layers = NULL,
-    orig = NULL,
-    new.reduction = 'integrated.dr',
-    reference = NULL,
-    features = NULL,
-    normalization.method = c("LogNormalize", "SCT"),
-    dims = 1:30,
-    k.filter = NA,
-    scale.layer = 'scale.data',
-    dims.to.integrate = NULL,
-    k.weight = 100,
-    weight.reduction = NULL,
-    sd.weight = 1,
-    sample.tree = NULL,
-    preserve.order = FALSE,
-    verbose = TRUE,
-    ...
-) {
-  op <- options(Seurat.object.assay.version = "v3", Seurat.object.assay.calcn = FALSE)
-  on.exit(expr = options(op), add = TRUE)
-  normalization.method <- match.arg(arg = normalization.method)
-  features <- features %||% SelectIntegrationFeatures5(object = object)
-  assay <- assay %||% 'RNA'
-  layers <- layers %||% Layers(object = object, search = 'data')
-  #check that there enough cells present
-  ncells <- sapply(X = layers, FUN = function(x) {ncell <-  dim(object[x])[2]
-  return(ncell) })
-  if (min(ncells) < max(dims))  {
-    abort(message = "At least one layer has fewer cells than dimensions specified, please lower 'dims' accordingly.")
-  }
-  if (normalization.method == 'SCT') {
-    #create grouping variables
-    groups <- CreateIntegrationGroups(object, layers = layers, scale.layer = scale.layer)
-    object.sct <- CreateSeuratObject(counts = object, assay = 'SCT')
-    object.sct$split <- groups[,1]
-    object.list <- SplitObject(object = object.sct, split.by = 'split')
-    object.list <- PrepSCTIntegration(object.list = object.list, anchor.features = features)
-    object.list <- lapply(X = object.list, FUN = function(x) {
-      x <- RunPCA(object = x, features = features, verbose = FALSE, npcs = max(dims))
-      return(x)
-    }
-    )
-  } else {
-    object.list <- list()
-    for (i in seq_along(along.with = layers)) {
-      object.list[[i]] <- suppressMessages(suppressWarnings(
-        CreateSeuratObject(counts = NULL, data = object[layers[i]][features,])
-      ))
-      VariableFeatures(object =  object.list[[i]]) <- features
-      object.list[[i]] <- suppressWarnings(ScaleData(object = object.list[[i]], verbose = FALSE))
-      object.list[[i]] <- RunPCA(object = object.list[[i]], verbose = FALSE, npcs=max(dims))
-      suppressWarnings(object.list[[i]][['RNA']]$counts <- NULL)
-    }
-  }
-  anchor <- FindIntegrationAnchors(object.list = object.list,
-                                   anchor.features = features,
-                                   scale = FALSE,
-                                   reduction = 'rpca',
-                                   normalization.method = normalization.method,
-                                   dims = dims,
-                                   k.filter = k.filter,
-                                   reference = reference,
-                                   verbose = verbose      # Removed ... here
-  )
-  slot(object = anchor, name = "object.list") <- lapply(
-    X = slot(
-      object = anchor,
-      name = "object.list"),
-    FUN = function(x) {
-      suppressWarnings(expr = x <- DietSeurat(x, features = features[1:2]))
-      return(x)
-    })
-  object_merged <- IntegrateEmbeddings(anchorset = anchor,
-                                       reductions = orig,
-                                       new.reduction.name = new.reduction,
-                                       dims.to.integrate = dims.to.integrate,
-                                       k.weight = k.weight,
-                                       weight.reduction = weight.reduction,
-                                       sd.weight = sd.weight,
-                                       sample.tree = sample.tree,
-                                       preserve.order = preserve.order,
-                                       verbose = verbose
-  )
+SCANORAMAIntegration  <- function( object, ndims = ndims, new.integration = "integrated.scanorama", layers="counts",
+                                   features = NULL, conda_env = conda_env,...) {
+  reticulate::use_condaenv(conda_env, required = TRUE)
+  scr    <- reticulate::import('scanorama')
+  scipy  <- reticulate:: import('scipy', convert = FALSE)
+  datasets <- list()
+  genes_list <- list()
+  features <- VariableFeatures(object)
+  datasets <- lapply(X = layers, FUN = function(layer) {
+    layer.data <- LayerData(object = object, layer = layer, features = features)
+    scipy$sparse$csr_matrix(Matrix::t(layer.data))
+  })
+  genes_list <- Features(object, layer=layers)
 
-  output.list <- list(object_merged[[new.reduction]])
-  names(output.list) <- c(new.reduction)
+  out <- scr$correct(datasets, genes_list,
+                     return_dimred=TRUE, return_dense=TRUE)
+  combined <- t( do.call("rbind", out[[2]]) )
+
+  dimnames(combined) <- list(out[[3]], unlist( sapply(datasets, rownames) ))
+
+  emb_pca <- do.call(rbind, out[[1]])
+  dimnames(emb_pca) <- list( unlist( sapply(datasets, rownames) ), paste0("PC_", 1:ncol(emb_pca)) )
+
+  ## Create Seurat object
+  combined <- CreateSeuratObject(counts=combined, assay="pano")
+
+  combined[["pca"]] <- CreateDimReducObject(embeddings=emb_pca,
+                                            stdev=apply(emb_pca, 2, sd),
+                                            key="PC_", assay="pano")
+  output.list <- list(Embeddings(combined, reduction = "pca"))
+  names(output.list) <- new.reduction
   return(output.list)
 }
+
+
