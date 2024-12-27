@@ -21,9 +21,10 @@ set(
 
 The goal of scib (single-cell integration and benchmarking) is to provide a unified way to perform data integration and benchmarking when the ground truth is available.
 
-TEST
 
-# INSTALLATION
+# INSTALLATION 
+
+## SCIB package
 
 You can install the latest version scib like so:
 
@@ -31,6 +32,89 @@ You can install the latest version scib like so:
 library(remotes)
 install_github("mthimma/scib")
 ```
+
+# DEPENDENCY FOR WINDOWS OS
+
+1. Install the R package `reticulate`
+
+```{r, eval=FALSE}
+install.packages("reticulate")
+```
+
+2. Load the R package
+
+```{r, eval=FALSE}
+library(reticulate)
+```
+
+3. Create a conda environment via reticulate.
+
+```{r, eval=FALSE}
+conda_create(envname = "scib", python_version = "=3.11")
+```
+
+4. Install `python-annoy` dependency which is needed by bbknn and scanorama.
+
+```{r, eval=FALSE}
+py_install(envname  = "scib", packages = "python-annoy", channel = "conda-forge")
+```
+
+5. Install the data integration softwares.
+
+```{r, eval=FALSE}
+conda_install(envname = "scib", 
+              packages = c("scvi-tools", "scanpy", "scpython", "anndata", "bbknn", "scanorama"),
+              pip = TRUE)
+```
+
+6. Record the path to the `scib` environment.
+
+```{r, eval=FALSE}
+conda_list()
+```
+
+
+# DEPENDENCY FOR LINUX OS
+
+1. Install miniforge conda if not available.
+
+```{bash, eval=FALSE}
+curl -L -O "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-$(uname)-$(uname -m).sh"
+bash Miniforge3-$(uname)-$(uname -m).sh
+```
+
+2. Restart the terminal for the changes to take effect.
+
+3. Create the conda environment via miniforge. Type "Y" when it asks you to install new packages.
+
+```{bash, eval=FALSE}
+conda create --name scib python=3.11
+```
+
+4. Install `python-annoy` dependency which is needed by bbknn and scanorama.
+
+```{bash, eval=FALSE}
+conda install --name scib -c conda-forge python-annoy
+```
+
+5. Install the data integration softwares.
+
+```{bash, eval=FALSE}
+pip install scvi-tools scanpy scpython bbknn anndata scanorama
+```
+
+6. Record the path to the `scib` environment.
+```{bash, eval=FALSE}
+conda env list
+```
+
+4. Record the path to the `scib` environment 
+
+```{bash, eval=FALSE}
+conda env list
+```
+
+
 
 # LOAD DATA FOR DEMONSTRATION
 
