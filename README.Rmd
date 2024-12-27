@@ -85,7 +85,7 @@ bash Miniforge3-$(uname)-$(uname -m).sh
 
 2. Restart the terminal for the changes to take effect.
 
-3. Create the conda environment via miniforge. Type "Y" when it asks you to install new packages.
+3. Create the conda environment via miniforge.
 
 ```{bash, eval=FALSE}
 conda create --name scib python=3.11
@@ -100,20 +100,14 @@ conda install --name scib -c conda-forge python-annoy
 5. Install the data integration softwares.
 
 ```{bash, eval=FALSE}
-pip install scvi-tools scanpy scpython bbknn anndata scanorama
+conda install --name scib -c bioconda -c conda-forge \
+ scvi-tools scanpy scpython bbknn anndata scanorama 
 ```
 
 6. Record the path to the `scib` environment.
 ```{bash, eval=FALSE}
 conda env list
 ```
-
-4. Record the path to the `scib` environment 
-
-```{bash, eval=FALSE}
-conda env list
-```
-
 
 
 # LOAD DATA FOR DEMONSTRATION
