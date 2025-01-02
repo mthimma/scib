@@ -206,7 +206,7 @@ ord <- melted %>%
 
 melted$method <- factor(melted$method, levels = ord)
 
-##
+## Heatmap
 ggplot(melted, aes(x = metric, y = method, fill = value_scaled)) +
   geom_tile() +
   geom_text(aes(label = round(value, 3)), color = "black") +
