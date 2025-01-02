@@ -2,6 +2,7 @@ name: scib
 channels:
   - defaults
   - conda-forge
+  - bioconda
 dependencies:
   - brotli-python=1.0.9=py311hd77b12b_8
   - bzip2=1.0.8=h2bbff1b_6
