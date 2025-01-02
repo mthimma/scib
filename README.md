@@ -7,7 +7,7 @@ the ground truth is available.
 
 # Data integration methods implemented via scib and other packages
 
-| method$^*$ | Package for wrapper | Publication                                     | DOI                                           |
+| method<sup>*</sup> | Package for wrapper | Publication                                     | DOI                                           |
 |---         |---                  |---                                              |---                                            |
 | CCA        | Seurat              | Stuart T. et al. Cell (2019)                    | https:://doi.org/10.1016/j.cell.2019.05.031   |
 | RPCA       | Seurat              | Stuart T. et al. Cell (2019)                    | https:://doi.org/10.1016/j.cell.2019.05.031   |
@@ -21,7 +21,7 @@ the ground truth is available.
 | SCMC       | scib (this package) | Zhang, L. et al. Genome Biology (2021)          | https://doi.org/10.1186/s13059-020-02238-2    |
 
 
-$^*$ The specific method can be called by appending the word "Integration" to the method name (e.g. HarmonyIntegration) for `IntegrateLayers2()` in `scib` package.
+<sup>*</sup> The specific method can be called by appending the word "Integration" to the method name (e.g. HarmonyIntegration) for `IntegrateLayers2()` in `scib` package.
 
 
 # Guides
