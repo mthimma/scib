@@ -140,7 +140,7 @@ dependencies:
       - yarl==1.18.3
       - zipp==3.21.0
 
- - selectors:
+  - selectors:
       - selector: platform == 'win'
         dependencies:
           - ucrt=10.0.22621.0
