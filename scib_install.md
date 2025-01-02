@@ -16,7 +16,7 @@ if(!require(scMC)) install_github("amsszlh/scMC")
 if(!require(scib)) install_github("mthimma/scib")
 ```
 
-# Step 2: Install packages in conda environment (Windows)
+# Step 2: Install packages in conda environment for Windows OS
 
 ``` r
 if( !file.exists(conda_binary()) ) install_miniconda()
@@ -26,12 +26,11 @@ system('curl -LJO https://raw.githubusercontent.com/mthimma/scib/refs/heads/main
 conda_create(envname = "scib", environment = "scib_win.yaml")
 ```
 
-# Step 2: Install packages in conda environment (Linux and MacOS)
+# Step 2: Install packages in conda environment for Linux and MacOS
 
 If conda does not exist, you can install miniforge or miniconda.
 
 ``` bash
-
 curl -L -O "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-$(uname)-$(uname -m).sh"
 
 bash Miniforge3-$(uname)-$(uname -m).sh
