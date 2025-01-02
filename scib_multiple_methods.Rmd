@@ -1,0 +1,223 @@
+---
+output: github_document
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.path = "man/figures/README-",
+  out.width = "100%",
+  warning = FALSE,
+  message = FALSE
+)
+```
+
+Please ensure you completed: [Example of running and evaluating one data integration method](scib_one_method.md)
+
+
+# SETUP
+
+```{r}
+pacman::p_load(tidyverse, janitor, reticulate,
+               Seurat, SeuratWrappers, scib)
+```
+
+
+```{r}
+python_binary <- conda_list() %>%
+  filter(name == "scib") %>%
+  pull(python) %>% 
+  normalizePath(winslash = "/")
+
+use_python(python_binary, required = TRUE)
+
+conda_env <- dirname(python_binary)
+```
+
+
+# LOAD & PREPARE THE DATASET
+
+We can load the `pbmc.demo` dataset and run through Steps 1 - 2:
+
+```{r}
+## Load data
+data(pbmc.demo, package = "scib")
+
+## Step 1: Split the Seurat object
+pbmc.demo[["RNA"]] <- split(pbmc.demo[["RNA"]], f = pbmc.demo$batch)
+
+## Step 2: Preprocess each split
+pbmc.demo <- pbmc.demo %>%
+  NormalizeData(verbose = FALSE) %>%
+  FindVariableFeatures(verbose = FALSE) %>%
+  ScaleData(verbose = FALSE) %>%
+  RunPCA(verbose = FALSE)
+
+ndims <- 10  # determined from Elbowplot(pbmc.demo) earlier
+```
+
+
+```{r}
+pbmc.demo
+```
+
+```{r, echo=FALSE}
+set.seed(123)  # to fix the random seed for consistency in the .md output
+```
+
+
+
+# RUNNING MULTIPLE DATA INTEGRATION METHODS
+
+We can repeat Steps 3 - 4 with all the methods.
+
+```{r, eval=FALSE, warnings=FALSE, message=FALSE}
+methods <- c(
+  "BBKNNIntegration", 
+  "CCAIntegration", 
+  "CONOSIntegration", 
+  "FastMNNIntegration", 
+  "HarmonyIntegration", 
+  "LIGERIntegration",
+  "RPCAIntegration", 
+  "SCANORAMAIntegration",
+  "SCMCIntegration", 
+  "scVIIntegration")
+
+big.res <- list()
+
+for(method in methods){
+  
+  cat(method, "\t", date(), "\n")
+
+  ptm <- Sys.time()
+  
+  method.name <- gsub("Integration", "", method) %>% str_to_lower()
+
+  ## Step 3: Data integration step
+  pbmc.demo <- IntegrateLayers2(object         = pbmc.demo,
+                                method         = method,
+                                orig.reduction = "pca",
+                                new.reduction  = paste0("integrated.", method.name),
+                                verbose        = FALSE,
+                                ndims          = ndims,
+                                resolution     = 0.80,
+                                conda_env      = conda_env
+  )
+  
+  
+  ## Step 4: Processing the integrated data
+  pbmc.demo <- FindNeighbors(pbmc.demo, reduction = paste0("integrated.", method.name), verbose = FALSE)
+  pbmc.demo <- FindClusters (pbmc.demo, res = 0.80, cluster.name = paste0("cluster.", method.name), verbose = FALSE)
+  pbmc.demo$seurat_clusters <- NULL
+  
+  
+  ## Step 6: Evaluate the data integration method
+  res <- run_eval_metrics(pbmc.demo, 
+                          reduction      = paste0("integrated.", method.name),  
+                          predicted.cn   = paste0("cluster.", method.name),
+                          groundtruth.cn = "seurat_annotations")
+
+  dtm <- difftime( Sys.time(), ptm, units = "mins" ) %>% as.numeric()
+  
+  res <- data.frame( c(res, "time_minutes"=dtm) )
+  colnames(res) <- method.name
+  big.res[[method]]  <- res
+  
+  ## Cleanup
+  pbmc.demo@graphs$RNA_nn  <- NULL
+  pbmc.demo@graphs$RNA_snn <- NULL
+  pbmc.demo@meta.data[ , paste0("cluster.", method.name)] <- NULL
+  rm(res, dtm)
+}
+
+big.res <- do.call("cbind", big.res)
+
+round(big.res, digits = 3)
+```
+
+|                     |  bbknn|    cca| conos| fastmnn| harmony| liger|   rpca| scanorama|   scmc|   scvi|
+|:--------------------|------:|------:|-----:|-------:|-------:|-----:|------:|---------:|------:|------:|
+|n_celltype           |  9.000|  9.000| 9.000|   9.000|   9.000| 9.000|  9.000|     9.000|  9.000|  9.000|
+|ari_celltype         |  0.000|  0.612| 0.321|   0.646|   0.604| 0.302|  0.686|     0.651|  0.693| -0.002|
+|nmi_celltype         |  0.004|  0.733| 0.512|   0.727|   0.702| 0.493|  0.756|     0.753|  0.765|  0.007|
+|asw_celltype         | -0.079|  0.134| 0.335|   0.128|   0.103| 0.198|  0.107|     0.079|  0.238| -0.053|
+|lisi_mean_celltype   |  0.588|  0.146| 0.153|   0.130|   0.146| 0.130|  0.146|     0.131|  0.072|  0.490|
+|lisi_median_celltype |  0.588|  0.049| 0.044|   0.081|   0.068| 0.061|  0.068|     0.084|  0.031|  0.492|
+|n_batch              |  3.000|  3.000| 3.000|   3.000|   3.000| 3.000|  3.000|     3.000|  3.000|  3.000|
+|ari_batch            |  0.000|  0.000| 0.128|   0.000|   0.000| 0.221|  0.001|     0.001|  0.000|  0.000|
+|nmi_batch            |  0.001|  0.001| 0.236|   0.002|   0.001| 0.310|  0.002|     0.002|  0.001|  0.001|
+|asw_batch            | -0.005| -0.022| 0.015|  -0.015|  -0.003| 0.156| -0.007|    -0.003| -0.007| -0.011|
+|lisi_mean_batch      |  0.868|  0.448| 0.185|   0.595|   0.742| 0.087|  0.744|     0.753|  0.730|  0.791|
+|lisi_median_batch    |  0.889|  0.437| 0.007|   0.581|   0.771| 0.021|  0.774|     0.783|  0.766|  0.825|
+|kbet_batch           |  0.981|  0.093| 0.112|   0.239|   0.970| 0.015|  0.799|     0.949|  0.932|  0.962|
+|time_minutes         |  0.348|  0.486| 0.850|   0.472|   0.311| 0.316|  0.465|     0.479|  0.542| 12.402|
+
+
+```{r,  echo=FALSE}
+big.res <- list(
+  bbknn = c(9, 8.55465672463951e-08, 0.00447411600735745, -0.0789469324854648, 0.587852069646343, 0.588266959702969, 3, -0.000130064371612754, 0.00118385479778089, -0.00461596023154219, 0.86818701895912, 0.889322433401334, 0.981060606060606, 0.347564613819122), 
+  cca = c(9, 0.611746887776172, 0.732841312816945, 0.133743859736564, 0.146000480449351, 0.0491668464815234, 3, 0.000100692431808576, 0.00137626598975104, -0.0223105313941484, 0.447947035898429, 0.437434759764513, 0.0928030303030303, 0.48648628393809), 
+  conos = c(9, 0.320652514319306, 0.512065996481631, 0.33461303288105, 0.15279208846439, 0.0439404827033115, 3, 0.128135884884105, 0.23589050806136, 0.0145018419629165, 0.1847561195928, 0.00686165181577787, 0.111742424242424, 0.849664549032847), 
+  fastmnn = c(9, 0.645889924774831, 0.727237701451667, 0.128016738076673, 0.130409876720446, 0.0806609089212558, 3, 0.0002709929317029, 0.0015144645311491, -0.0148484198186962, 0.59505010031486, 0.58107126566499, 0.238636363636364, 0.472058351834615), 
+  harmony = c(9, 0.6036724420751, 0.702122142409043, 0.102635020848601, 0.145976848703457, 0.0677276450639732, 3, -0.000177548905601504, 0.00127165428458149, -0.00292319062566635, 0.741542979113607, 0.770726530001735, 0.96969696969697, 0.311196136474609), 
+  liger = c(9, 0.302130688002304, 0.492884851887872, 0.198234845144068, 0.130343142660472, 0.0608963578381671, 3, 0.220959012536187, 0.310343854662033, 0.156382425763421, 0.0871957025263896, 0.0206975886863574, 0.0151515151515151, 0.316471016407013), 
+  rpca = c(9, 0.686007109269026, 0.756073725389971, 0.107026824223828, 0.146337166292036, 0.0680825087882096, 3, 0.00147185015228283, 0.00230399581878841, -0.00679061721386151, 0.743972311284299, 0.773983605779771, 0.799242424242424, 0.464911985397339), 
+  scanorama = c(9, 0.651386573193337, 0.753097825431876, 0.0789996809748052, 0.131108592360746, 0.0838015328799821, 3, 0.000539860509434224, 0.00160337669949618, -0.00313090980881176, 0.753105169415825, 0.782677176904662, 0.948863636363636, 0.478876948356628), 
+  scmc = c(9, 0.692685399368084, 0.764722124535388, 0.238359089702307, 0.072030649636778, 0.0314588884239092, 3, 0.000229138743736034, 0.0013075410942785, -0.00695310594658975, 0.729549752806017, 0.765549593142191, 0.931818181818182, 0.541514881451925),
+  scvi = c(9, -0.00154020801335072, 0.00670843675821818, -0.0530887163738029, 0.49014276653536, 0.491589137027127, 3, -0.00017461539960541, 0.00147499705646374, -0.0108434332011423, 0.791304127117875, 0.825060094994098, 0.962121212121212, 12.401539182663))
+
+big.res <- data.frame(big.res,
+                      row.names = c("n_celltype", "ari_celltype", "nmi_celltype", "asw_celltype", "lisi_mean_celltype", "lisi_median_celltype", "n_batch", "ari_batch", "nmi_batch", "asw_batch", "lisi_mean_batch", "lisi_median_batch", "kbet_batch", "time_minutes"))
+```
+
+
+Let's look at the ARI, NMI, ASW and 1 - LISI values for celltype.
+
+```{r}
+methods <- paste0( c("ari", "nmi", "asw", "lisi_median"), "_celltype" )
+
+mdf <- big.res[ methods, ] %>% t() %>% data.frame()
+mdf$"1 - lisi" <- 1 - mdf$lisi_median_celltype
+mdf$lisi_median_celltype <- NULL
+colnames(mdf) <- gsub("_celltype", "", colnames(mdf))
+mdf
+```
+
+We can visualize this via a heatmap:
+
+```{r}
+## Reshape data to long format
+melted <- mdf %>% 
+  as.matrix() %>% 
+  reshape2::melt(varnames = c("method", "metric")) %>% 
+  as.data.frame() %>% 
+  group_by(metric) %>% 
+  mutate(value_scaled = as.numeric(scale(value)))
+
+## re-order the methods by sum of scaled values
+ord <- melted %>%
+  group_by(method) %>%
+  summarise(product = sum(value_scaled)) %>% 
+  arrange(product) %>% 
+  pull(method) %>% 
+  as.character()
+
+melted$method <- factor(melted$method, levels = ord)
+
+##
+ggplot(melted, aes(x = metric, y = method, fill = value_scaled)) +
+  geom_tile() +
+  geom_text(aes(label = round(value, 3)), color = "black") +
+  scale_fill_gradient2(low = "blue", mid = "white", high = "red", midpoint = 0) +
+  theme_minimal() +
+  theme(axis.text.x.top = element_text(angle = 0, hjust = 0.5, size = 15),
+        axis.text.y.left = element_text(size = 15)) +
+  scale_x_discrete(position = "top") +
+  labs(fill = "Scaled Value", title = NULL, x = NULL, y = NULL)
+
+
+```
+
+It looks like scMC method is performing well in this dataset but we need to test this in a wide variety of real datasets.

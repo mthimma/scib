@@ -75,3 +75,9 @@ conda_env <- dirname(python_binary)
 conda_env
 # "C:/Users/mthimma/AppData/Local/r-miniconda/envs/scib/"
 ```
+
+
+[Example of running and evaluating one data integration method](scib_one_method.md)
+
+[Example of running and evaluating **multiple** data integration methods](scib_multiple_methods.md)
+
