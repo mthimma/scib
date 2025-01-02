@@ -8,277 +8,53 @@ knitr::opts_chunk$set(
   comment = "#>",
   fig.path = "man/figures/README-",
   out.width = "100%",
-  eval=FALSE,
   warning = FALSE,
   message = FALSE
 )
 ```
 
+# SETUP
 
-# scib
-
-<!-- badges: start -->
-<!-- badges: end -->
-
-The goal of scib (single-cell integration and benchmarking) is to provide a unified way to perform data integration and benchmarking when the ground truth is available.
-
-
-# INSTALLATION 
-
-Step 1: Install the R package dependencies:
-
-```{r, eval=FALSE}
-if(!require(pacman)) install.packages("pacman")
-
-if(!require(RcppPlanc)) install.packages('RcppPlanc', 
-                                         repos = 'https://welch-lab.r-universe.dev')
-
-pacman::p_load(tidyverse, Seurat, SeuratWrappers,
-               remotes, reticulate, leidenAlg,
-               conos, harmony, rliger)
-
-if(!require(scMC)) install_github("amsszlh/scMC")
-
-if(!require(scib)) install_github("mthimma/scib")
-```
-
-Step 2: Install the miniconda environment (if it does not exist)
-
-```{r, eval=FALSE}
-install_miniconda()
-```
-
-Step 3: Create the conda environment
-
-```{r, eval=FALSE}
-system('curl -LJO https://raw.githubusercontent.com/mthimma/scib/refs/heads/main/scib.yaml')
-
-conda_create(envname = "scib", environment = "scib.yaml")
-```
-
-
-Later ...
 
 ```{r}
-python_path <- conda_list() %>% 
-  filter(name=="scib") %>% 
-  pull(python)
-
-use_python(python_path)
-
-conda_env <- dirname(python_path)  ## needed inside IntegrateLayers2() function
+pacman::p_load(tidyverse, janitor, reticulate,
+               Seurat, SeuratWrappers, scib)
 ```
 
 
-py_module_available("leidenalg")
-py_module_available("pandas")
+```{r}
+python_binary <- conda_list() %>%
+  filter(name == "scib") %>%
+  pull(python) %>% 
+  normalizePath(winslash = "/")
 
+use_python(python_binary, required = TRUE)
 
-## Install Dependencies for Windows OS
-
-Install miniforge
-
-https://github.com/conda-forge/miniforge/releases/latest
-
-
-This installs "Miniforge prompt". Open this terminal
-
-
-reticulate R package
-
-
-
-
-## Install Dependencies for Windows OS (old)
-
-1. Install the R package `reticulate`
-
-```{r, eval=FALSE}
-install.packages("reticulate")
-```
-
-where.exe python
-C:\Users\aramasamy\AppData\Local\mambaforge\python.exe
-
-
-use_python("C:\\Users\\aramasamy\\AppData\\Local\\mambaforge\\envs\\scib\\python.exe")
-
-
-2. Load the R package
-
-```{r, eval=FALSE}
-library(reticulate)
-```
-
-3. Create a conda environment via reticulate.
-
-```{r, eval=FALSE}
-conda_create(envname = "scib", python_version = "=3.11")
-```
-
-4. Install dependencies: `python-annoy` (needed for bbknn and scanorama) and `pandas`, `leidenalg` (needed for scMC).
-
-```{r, eval=FALSE}
-py_install(envname  = "scib", packages = "python-annoy", channel = "conda-forge")
-
-py_install("python-igraph")
-py_install("leidenalg", forge = TRUE)
-py_install(envname  = "scib", packages = c("leidenalg", "panda"))
-```
-
-5. Install the data integration softwares.
-
-```{r, eval=FALSE}
-conda_install(envname = "scib", 
-              packages = c("scvi-tools", "scanpy", "scpython", "anndata", "bbknn", "scanorama"),
-              pip = TRUE)
-```
-
-6. Record the path to the `scib` environment.
-
-```{r, eval=FALSE}
-conda_list()
-```
-
-
-## Install Dependencies for Linux OS
-
-1. Install miniforge conda if not available.
-
-```{bash, eval=FALSE}
-curl -L -O "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-$(uname)-$(uname -m).sh"
-bash Miniforge3-$(uname)-$(uname -m).sh
-```
-
-2. Restart the terminal for the changes to take effect.
-
-xxx
-
-3. Create and activate the conda environment via miniforge.
-
-```{bash, eval=FALSE}
-conda create --name scib python=3.11
-
-conda activate scib
-```
-
-4. Install dependencies: `python-annoy` (needed for bbknn and scanorama) and `leidenalg` (needed for scMC).
-
-```{bash, eval=FALSE}
-pip install leidenalg numpy python-igraph
-conda install -c conda-forge python-annoy pooch
-
-
-
-```
-
-5. Install the data integration softwares.
-
-```{bash, eval=FALSE}
-pip install scvi-tools scanpy scpython bbknn anndata scanorama 
-```
-
-6. Record the path to the `scib` environment.
-```{bash, eval=FALSE}
-conda env list
-where.exe python
-which python
-```
-
-
-## SCIB package
-
-You can install the latest version scib like so:
-
-```{r, eval=FALSE}
-library(remotes)
-
-install_github("mthimma/scib")
+conda_env <- dirname(python_binary)
 ```
 
 
 # LOAD DATA FOR DEMONSTRATION
 
-We load the required packages:
+We will load the `pbmc.demo` dataset which is a Seurat object containing 2,638 peripheral blood mononuclear cells (PBMC). The data is provided by 10X genomics and similar to the one use in fundamental Seurat vignette with pbmc3k. 
 
 ```{r}
-library(tidyverse)
-library(Seurat)
-library(SeuratWrappers)
-library(reticulate)
-library(scib)
+data(pbmc.demo, package = "scib")
 
-```
-
-path to `scib` conda environment:
-
-```{r}
-conda_env <- "C:/Users/aramasamy/AppData/Local/mambaforge/envs/scib"
-
-use_python( file.path(conda_env, "python.exe") )
-```
-
-Next, we will load the `pbmc.demo` dataset. This is the same dataset that used in the Seurat vignette and contains 2,700 peripheral blood mononuclear cells (PBMC) from 10X genomics. See `help(pbmc.demo)` for more details.
-
-```{r}
-data(pbmc.demo)
 pbmc.demo
 ```
 
+The meta data contains two columns of interest to us:
 
-<!-- We also need to specify the conda environment which contain python packages and dependencies for BBKNN, Scanaroma and scVI. -->
-<!-- For example, we can do this in Windows via: -->
+a) `seurat_annotations` provided by the Seurat co-authors and this serves as the ground truth for evaluation.
 
-<!-- ```{r} -->
-<!-- conda_env <- conda_list() %>%  -->
-<!--   filter(name == "scib") %>%  -->
-<!--   pull(python) %>%  -->
-<!--   gsub("/python.exe", "", .) -->
+b) `batch` which was artificially generated for demonstration.
 
-<!-- conda_env -->
-<!-- ``` -->
-
-
-## Quality control
-
-Like all single-cell dataset, we need to perform quality control to ensure high quality dataset. Here we conduct a lenient quality control.
-
-```{r}
-pbmc.demo <- pbmc.demo[ , !is.na(pbmc.demo$seurat_annotations)]  ## fix
-
-pbmc.demo$percent.mt <- PercentageFeatureSet(pbmc.demo, pattern = "^MT-|^Mt-")
-
-VlnPlot(pbmc.demo, c("nCount_RNA", "nFeature_RNA", "percent.mt"))
-
-pbmc.demo <- subset(pbmc.demo,
-                    nFeature_RNA > 200 &
-                      nFeature_RNA < 2500 &
-                      percent.mt   < 5)
-```
-
-Aside: After quality control
-
-```{r}
-pbmc.demo
-
-VlnPlot(pbmc.demo, c("nCount_RNA", "nFeature_RNA", "percent.mt"))
-```
-
-## Ground truth
-
-This dataset includes `seurat_annotations` provided by the Seurat co-authors. We also included a `batch` column which is artificially created for this package demonstration.
 
 ```{r}
 pbmc.demo@meta.data %>%
-  glimpse()
+  tabyl(seurat_annotations, batch)
 ```
-
-```{r}
-pbmc.demo@meta.data %>% 
-  janitor::tabyl(seurat_annotations, batch)
-```
-
-# DATA INTEGRATION
 
 Aside: Seurat v5 stores information in the following layers
 
@@ -293,23 +69,24 @@ Layers(pbmc.demo)
 ```
 
 
+# DATA INTEGRATION
+
+
 ## Step 1: Split the Seurat object
 
-We will split the RNA assay by the grouping factor that defines the batch effect. In reality, batch effects may arise from differences between donors, single-cell technology, sequencing platforms, timing, reagents, or experimental conditions across laboratories.
+We split the RNA assay by the batch effect. In reality, batch effects may arise from differences between donors, single-cell technology, sequencing platforms, timing, reagents, or experimental conditions across laboratories.
 
 ```{r}
 pbmc.demo[["RNA"]] <- split(pbmc.demo[["RNA"]], f = pbmc.demo$batch)
-```
 
-Aside: We now can see that the counts and data layer has been split into three layers each.
-
-```{r}
-Layers(pbmc.demo)
+pbmc.demo
 ```
+The counts and data layer has been split into three layers each.
+
 
 ## Step 2: Preprocess each split
 
-Next we need to run the standard preprocessing steps for each split. This can be done via:
+We run the standard preprocessing steps for each split.
 
 ```{r}
 pbmc.demo <- pbmc.demo %>%
@@ -317,13 +94,12 @@ pbmc.demo <- pbmc.demo %>%
   FindVariableFeatures(verbose = FALSE) %>%
   ScaleData(verbose = FALSE) %>%
   RunPCA(verbose = FALSE)
-```
 
-We can see this has created the `pca` reduction based on the unintegrated data. We can determine the dimensional of this dataset from the Elbow plot to be approximately 10.
+pbmc.demo
+```
+The `pca` reduction has been generated based on the unintegrated data. We can determine the **dimensionality of this dataset** from the Elbow plot to be approximately 10.
 
 ```{r}
-Reductions(pbmc.demo)
-
 ElbowPlot(pbmc.demo, ndims = 50, reduction = "pca")
 
 ndims <- 10
@@ -349,28 +125,10 @@ pbmc.demo <- IntegrateLayers2(pbmc.demo,
 Reductions(pbmc.demo)
 ```
 
-Other available methods that can be used with `IntegrateLayers()`:
-
-| method$^*$ | Package for wrapper | Publication                                     | DOI                                           |
-|---         |---                  |---                                              |---                                            |
-| CCA        | Seurat              | Stuart T. et al. Cell (2019)                    | https:://doi.org/10.1016/j.cell.2019.05.031   |
-| RPCA       | Seurat              | Stuart T. et al. Cell (2019)                    | https:://doi.org/10.1016/j.cell.2019.05.031   |
-| Harmony    | Seurat              | Korsunsky, I. et al. Nat Methods (2019)         | https://doi.org/10.1038/s41592-019-0619-0     |
-| FastMNN    | SeuratWrapper       | Haghverdi, L. et al. Nat. Biotechnol. (2018)    | https://doi.org/10.1038/s41421-019-0114-x     |
-| SCVI       | SeuratWrapper       | Lopez, R.et al. Nat Methods (2018)              | https://doi.org/10.1038/s41592-018-0229-2     |
-| BBKNN      | scib (this package) | Krzysztof Polański et al. Bioinformatics (2020) | https://doi.org/10.1093/bioinformatics/btz625 |
-| CONOS      | scib (this package) | Barkas, N et al. Nat Methods (2019)             | https://doi.org/10.1038/s41592-019-0466-z     |
-| LIGER      | scib (this package) | Liu, J.et al. Nat. Protocols (2020)             | https://doi.org/10.1038/s41596-020-0391-8     |
-| SCANORAMA  | scib (this package) | Hie, B et al. Nat Biotechnology (2019)          | https://doi.org/10.1038/s41587-019-0113-3     |
-| SCMC       | scib (this package) | Zhang, L. et al. Genome Biology (2021)          | https://doi.org/10.1186/s13059-020-02238-2    |
-
-
-$^*$ The specific method can be called by appending the word "Integration" to the method name (e.g. HarmonyIntegration).
-
 
 ## Step 4: Processing the integrated data
 
-We can now run the non-linear dimension reduction on the integrated embedding and save it. Here the `ndims` is the dimensionality of the dataset that we determined earlier.
+We can now run the non-linear dimension reduction on the integrated embedding. 
 
 ```{r, warning=FALSE}
 pbmc.demo <- RunUMAP(pbmc.demo,
@@ -379,15 +137,22 @@ pbmc.demo <- RunUMAP(pbmc.demo,
                      reduction.name = "umap.harmony",
                      verbose        = FALSE
 )
+
+Reductions(pbmc.demo)
 ```
 
-Next we cluster the cells at certain resolution based on the integrated embedding. We chose `res = 0.80` here but you should determine this for your own dataset.
+Next, we cluster the cells at certain resolution based on the integrated embedding. We chose `res = 0.80` here for demonstration but you should determine this for your own dataset.
 
 ```{r}
 pbmc.demo <- FindNeighbors(pbmc.demo, reduction = "integrated.harmony")
 
 pbmc.demo <- FindClusters (pbmc.demo, res = 0.80, cluster.name = "cluster.harmony")
+```
 
+
+Aside: We can visualize these clusters on the harmony-corrected embedding based UMAP.
+
+```{r}
 DimPlot(pbmc.demo,
         reduction = "umap.harmony",
         group.by  = "cluster.harmony",
@@ -398,29 +163,26 @@ DimPlot(pbmc.demo,
 
 ## (optional) Step 5: Cleanup after data integration
 
-After the data integration, we no longer need the counts and data to be split by the batch variable. 
-Similarly, we do not need the `scale.data` layer which being a non-sparse matrix takes a lot of space.
+Before the cleanup:
 
 ```{r}
 Layers(pbmc.demo)
-
 object.size(pbmc.demo) %>% format(units = "Mb")
 ```
-
-We can join the layers and remove the `scale.data` to reduce object size.
+We can join the data layers, count layers and remove the `scale.data` (non-sparse matrix) to reduce object size.
 
 ```{r}
 pbmc.demo <- JoinLayers(pbmc.demo)
 pbmc.demo[["RNA"]]$scale.data  <- NULL
 ```
 
-We can confirm this by checking the layers and observing the reduction in object size (from 100Mb to 60Mb).
+We can confirm this by checking the layers and observing the reduction in object size (from 102Mb to 62Mb).
 
 ```{r}
-Layers(pbmc.demo)  
 object.size(pbmc.demo) %>% format(units = "Mb")  
-```
 
+pbmc.demo
+```
 
 # EVALUATION
 
@@ -468,9 +230,8 @@ pbmc.demo$ann.harmony <- case_match(pbmc.demo$cluster.harmony,
 3. Divide by the total number of cells. i.e. 2388 / 2638 which gives 90.5%.
 
 ```{r}
-mean(pbmc.demo$ann.harmony == pbmc.demo$seurat_annotations)
+100 * mean(pbmc.demo$ann.harmony == pbmc.demo$seurat_annotations)
 ```
-
 
 However, there are more sophisticated metrics for evaluation which we cover next.
 
@@ -497,112 +258,5 @@ data.frame(results)
 # asw_batch            -0.0028503476
 # lisi_mean_batch       0.7411130657
 # lisi_median_batch     0.7707188999
-# kbet_batch            0.9753787879
+# kbet_batch            0.9715909091
 ```
-
-
-# EVALUATING MULTIPLE METHODS
-
-## Data preparation
-
-Let us demonstrate how to run and evaluate mutiple data integration techniques. Let us reset the pbmc.demo data first.
-
-```{r}
-rm(pbmc.demo)
-data(pbmc.demo, package = "scib")
-pbmc.demo <- pbmc.demo[ , !is.na(pbmc.demo$seurat_annotations)]  ## fix
-```
-
-Next we can run through Steps 1 - 2 to prepare the data again
-```{r}
-pbmc.demo[["RNA"]] <- split(pbmc.demo[["RNA"]], f = pbmc.demo$batch)
-
-pbmc.demo <- pbmc.demo %>%
-  NormalizeData(verbose = FALSE) %>%
-  FindVariableFeatures(verbose = FALSE) %>%
-  ScaleData(verbose = FALSE) %>%
-  RunPCA(verbose = FALSE)
-
-ndims <- 10  # determined from Elbowplot(pbmc.demo) earlier
-```
-
-
-## Multi method evaluation
-
-Let's demonstrate Steps 3 - 4 with all the methods.
-
-```{r, warnings=FALSE, message=FALSE}
-methods <- c(
-  "BBKNNIntegration", 
-  "CCAIntegration", 
-  "CONOSIntegration", 
-  "FastMNNIntegration", 
-  "HarmonyIntegration", 
-  "LIGERIntegration",
-  "RPCAIntegration", 
-  "SCANORAMAIntegration",
-  "SCMCIntegration", 
-  "scVIIntegration")
-
-big.res <- list()
-
-for(method in methods){
-
-  cat(method, "\t", date(), "\n")
-  method.name <- gsub("Integration", "", method) %>% str_to_lower()
-  method.name
-  
-  ## Step 3
-  pbmc.demo <- IntegrateLayers2(object         = pbmc.demo,
-                                method         = method,
-                                orig.reduction = "pca",
-                                new.reduction  = paste0("integrated.", method.name),
-                                verbose        = FALSE,
-                                ndims          = ndims,
-                                resolution     = 0.80,
-                                conda_env      = conda_env
-  )
-  
-  ## Step 4
-  pbmc.demo <- FindNeighbors(pbmc.demo, reduction = paste0("integrated.", method.name))
-  pbmc.demo <- FindClusters (pbmc.demo, res = 0.80, cluster.name = paste0("cluster.", method.name))
-  pbmc.demo$seurat_clusters <- NULL
-  
-  ## Evaluation step
-  res <- run_eval_metrics(pbmc.demo, 
-                          reduction      = paste0("integrated.", method.name),  
-                          predicted.cn   = paste0("cluster.", method.name),
-                          groundtruth.cn = "seurat_annotations")
-  
-  res <- data.frame(res)
-  colnames(res) <- method.name
-  big.res[[method]]  <- res
-  
-  ## Cleanup
-  pbmc.demo@graphs$RNA_nn  <- NULL
-  pbmc.demo@graphs$RNA_snn <- NULL
-  pbmc.demo@meta.data[ , paste0("cluster.", method.name)] <- NULL
-  rm(res)
-}
-
-big.res <- do.call("cbind", big.res)
-
-round(big.res, digits = 2)
-```
-
-|                     |  bbknn|    cca| conos| fastmnn| harmony| liger|   rpca| scanorama|   scmc|   scvi|
-|:--------------------|------:|------:|-----:|-------:|-------:|-----:|------:|---------:|------:|------:|
-|n_celltype           |  9.000|  9.000| 9.000|   9.000|   9.000| 9.000|  9.000|     9.000|  9.000|  9.000|
-|ari_celltype         |  0.000|  0.662| 0.327|   0.630|   0.643| 0.489|  0.670|     0.642|  0.688|  0.000|
-|nmi_celltype         |  0.005|  0.744| 0.519|   0.748|   0.735| 0.584|  0.771|     0.725|  0.744|  0.006|
-|asw_celltype         | -0.051|  0.125| 0.345|   0.133|   0.101| 0.224|  0.107|     0.081|  0.200| -0.107|
-|lisi_mean_celltype   |  0.571|  0.141| 0.133|   0.125|   0.139| 0.123|  0.159|     0.087|  0.099|  0.511|
-|lisi_median_celltype |  0.571|  0.059| 0.045|   0.081|   0.065| 0.051|  0.078|     0.059|  0.055|  0.515|
-|n_batch              |  3.000|  3.000| 3.000|   3.000|   3.000| 3.000|  3.000|     3.000|  3.000|  3.000|
-|ari_batch            |  0.000|  0.000| 0.139|   0.000|   0.000| 0.171|  0.000|     0.000|  0.000|  0.000|
-|nmi_batch            |  0.001|  0.001| 0.217|   0.001|   0.001| 0.234|  0.001|     0.001|  0.001|  0.001|
-|asw_batch            | -0.005| -0.026| 0.019|  -0.015|  -0.003| 0.092| -0.006|    -0.006| -0.007| -0.012|
-|lisi_mean_batch      |  0.868|  0.458| 0.225|   0.539|   0.739| 0.167|  0.748|     0.740|  0.782|  0.784|
-|lisi_median_batch    |  0.889|  0.454| 0.031|   0.514|   0.770| 0.049|  0.777|     0.768|  0.810|  0.820|
-|kbet_batch           |  0.981|  0.100| 0.131|   0.235|   0.964| 0.049|  0.771|     0.911|  0.947|  0.972|
-

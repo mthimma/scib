@@ -6,8 +6,8 @@ if(!require(pacman)) install.packages("pacman")
 if(!require(RcppPlanc)) 
   install.packages('RcppPlanc', repos = 'https://welch-lab.r-universe.dev')
 
-pacman::p_load(tidyverse, Seurat, SeuratWrappers,
-               remotes, reticulate, leidenAlg,
+pacman::p_load(tidyverse, janitor, remotes, reticulate, 
+               Seurat, SeuratWrappers, leidenAlg,
                conos, harmony, rliger)
 
 if(!require(scMC)) install_github("amsszlh/scMC")
@@ -16,7 +16,7 @@ if(!require(scib)) install_github("mthimma/scib")
 ```
 
 
-# Step 2: Install packages in conda environment for Windows OS
+# Step 2A: Install packages in conda environment for Windows OS
 
 You can execute the following commands in R:
 
@@ -29,7 +29,7 @@ conda_create(envname = "scib", environment = "scib_win.yaml")
 ```
 
 
-# Step 2: Install packages in conda environment for Linux and MacOS
+# Step 2B: Install packages in conda environment for Linux and MacOS
 
 If you do not have conda, you can install it via miniforge (see below) or miniconda. 
 
@@ -49,7 +49,7 @@ conda env create --name scib --file=scib_linux.yaml
 ```
 
 
-# Set python path before usage
+# Step 3: Set python path before each usage
 
 R uses the systems default Python. Therefore, we need to explicitly
 specify the location of the python used for `scib`.
