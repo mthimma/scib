@@ -1,12 +1,10 @@
 name: scib
-
 channels:
   - conda-forge
   - defaults
   - https://repo.anaconda.com/pkgs/main
   - https://repo.anaconda.com/pkgs/r
   - https://repo.anaconda.com/pkgs/msys2
-
 dependencies:
   - brotli-python=1.0.9
   - bzip2=1.0.8
@@ -27,15 +25,15 @@ dependencies:
   - setuptools=75.1.0
   - sqlite=3.45.3
   - tk=8.6.14
-  - urllib3=2.2.3
-  - wheel=0.44.0
-  - xz=5.4.6
-  - zlib=1.2.13
   - ucrt=10.0.22621.0
+  - urllib3=2.2.3
   - vc=14.40
   - vc14_runtime=14.42.34433
   - vs2015_runtime=14.42.34433
+  - wheel=0.44.0
   - win_inet_pton=1.1.0
+  - xz=5.4.6
+  - zlib=1.2.13
   - pip:
       - absl-py==2.1.0
       - aiohappyeyeballs==2.4.4
