@@ -4,8 +4,8 @@
 ``` r
 if(!require(pacman)) install.packages("pacman")
 
-if(!require(RcppPlanc)) install.packages('RcppPlanc', 
-                                         repos = 'https://welch-lab.r-universe.dev')
+if(!require(RcppPlanc)) 
+  install.packages('RcppPlanc', repos = 'https://welch-lab.r-universe.dev')
 
 pacman::p_load(tidyverse, Seurat, SeuratWrappers,
                remotes, reticulate, leidenAlg,
@@ -26,24 +26,24 @@ system('curl -LJO https://raw.githubusercontent.com/mthimma/scib/refs/heads/main
 conda_create(envname = "scib", environment = "scib_win.yaml")
 ```
 
-# Step 2: Install miniconda and packages in conda environment (Linux)
+# Step 2: Install packages in conda environment (Linux and MacOS)
+
+If conda does not exist, you can install miniforge or miniconda.
 
 ``` bash
+
 curl -L -O "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-$(uname)-$(uname -m).sh"
+
 bash Miniforge3-$(uname)-$(uname -m).sh
 ```
 
 Then restart the terminal or open a new terminal for the changes to take
 effect.
 
-# Step 3: Create the conda environment and install packages in it:
-
-Alternatively, you can execute the following command in the terminal:
-
 ``` bash
-curl -LJO https://raw.githubusercontent.com/mthimma/scib/refs/heads/main/scib.yaml
+curl -LJO https://raw.githubusercontent.com/mthimma/scib/refs/heads/main/scib_linux.yaml
 
-conda env create --name scib --file=scib.yaml
+conda env create --name scib --file=scib_linux.yaml
 ```
 
 # Set python path before usage
