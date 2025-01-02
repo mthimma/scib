@@ -1,8 +1,8 @@
 
-# SETUP
-
 Please ensure you completed: [Installation of scib and
 dependencies](scib_install.md).
+
+# SETUP
 
 ``` r
 pacman::p_load(tidyverse, janitor, reticulate,
@@ -303,13 +303,14 @@ DimPlot(pbmc.demo,
 
 <img src="man/figures/README-unnamed-chunk-21-1.png" width="100%" />
 
-## Evaluate the data integration
+## Step 6: Evaluate the data integration method
 
 There are more sophisticated metrics for evaluation:
 
-<img src="man/figures/evaluation_metric_methods.png" width="100%" /> We
-can apply these methods at celltype level or batch level using the
-`run_eval_metrics` function:
+<img src="man/figures/evaluation_metric_methods.png" width="100%" />
+
+  <br> We can apply these methods at celltype level and batch level
+using the `run_eval_metrics` function:
 
 ``` r
 results <- run_eval_metrics(pbmc.demo, 
@@ -334,5 +335,5 @@ data.frame(results)
 # kbet_batch            0.9715909091
 ```
 
-Next, see [Example of running and evaluating *multiple* data integration
-methods](scib_multiple_methods.md)
+Next, see [Example of running and evaluating **multiple** data
+integration methods](scib_multiple_methods.md)

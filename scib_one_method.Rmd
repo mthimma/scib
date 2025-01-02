@@ -13,9 +13,10 @@ knitr::opts_chunk$set(
 )
 ```
 
-# SETUP
-
 Please ensure you completed: [Installation of scib and dependencies](scib_install.md).
+
+
+# SETUP
 
 ```{r}
 pacman::p_load(tidyverse, janitor, reticulate,
@@ -249,14 +250,15 @@ DimPlot(pbmc.demo,
 ```
 
 
-## Evaluate the data integration
+## Step 6: Evaluate the data integration method
 
 There are more sophisticated metrics for evaluation:
 
 ```{r, echo=FALSE}
 knitr::include_graphics("man/figures/evaluation_metric_methods.png")
 ```
-We can apply these methods at celltype level or batch level using the `run_eval_metrics` function:
+
+&nbsp; <br> We can apply these methods at celltype level and batch level using the `run_eval_metrics` function:
 
 ```{r, eval = FALSE}
 results <- run_eval_metrics(pbmc.demo, 
@@ -282,4 +284,4 @@ data.frame(results)
 ```
 
 
-Next, see [Example of running and evaluating *multiple* data integration methods](scib_multiple_methods.md)
+Next, see [Example of running and evaluating **multiple** data integration methods](scib_multiple_methods.md)

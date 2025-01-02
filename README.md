@@ -30,6 +30,6 @@ the ground truth is available.
 
 [Example of running and evaluating one data integration method](scib_one_method.md)
 
-[Example of running and evaluating *multiple* data integration methods](scib_multiple_methods.md)
+[Example of running and evaluating **multiple** data integration methods](scib_multiple_methods.md)
 
 
