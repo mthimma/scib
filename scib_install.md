@@ -23,7 +23,7 @@ You can execute the following commands in R:
 ``` r
 if( !file.exists(conda_binary()) ) install_miniconda()
 
-system('curl -LJO https://raw.githubusercontent.com/mthimma/scib/refs/heads/main/scib_win.yaml')
+system("curl -LJO https://raw.githubusercontent.com/mthimma/scib/refs/heads/main/scib_env_windows.yaml")
 
 conda_create(envname = "scib", environment = "scib_win.yaml")
 ```
@@ -43,7 +43,7 @@ Then restart the terminal or open a new terminal for the changes to take
 effect. Next we create a conda environment with the required softwares:
 
 ``` bash
-curl -LJO https://raw.githubusercontent.com/mthimma/scib/refs/heads/main/scib_linux.yaml
+curl -LJO https://raw.githubusercontent.com/mthimma/scib/refs/heads/main/scib_env_linux.yaml
 
 conda env create --name scib --file=scib_linux.yaml
 ```
