@@ -1,6 +1,9 @@
 
 # SETUP
 
+Please ensure you completed: [Installation of scib and
+dependencies](scib_install.md).
+
 ``` r
 pacman::p_load(tidyverse, janitor, reticulate,
                Seurat, SeuratWrappers, scib)
@@ -250,8 +253,12 @@ print.table(tb, zero.print = ".")
 # Platelet       .   .   .   .   .   .   .   .   .   .   .  14
 ```
 
-There are several ways of estimating the performance of the data
-integration technique. Accuracy is one of the simpler method.
+## Accuracy: a simple evaluation of data integration
+
+There are several ways of evaluation the performance of the data
+integration technique. One of the simpler ways is accuracy which is
+defined as the percentage of correctly predicted labels out of the total
+number of observations.
 
 1.  Assign every cluster to one label using simple majority
 
@@ -283,10 +290,26 @@ pbmc.demo$ann.harmony <- case_match(pbmc.demo$cluster.harmony,
 #> [1] 90.52312
 ```
 
-However, there are more sophisticated metrics for evaluation which we
-cover next.
+Aside: The UMAP cluster can be visualized with the predicted labels as
+follows.
+
+``` r
+DimPlot(pbmc.demo,
+        reduction = "umap.harmony",
+        group.by  = "ann.harmony",
+        label     = TRUE) +
+  NoLegend()
+```
+
+<img src="man/figures/README-unnamed-chunk-21-1.png" width="100%" />
 
 ## Evaluate the data integration
+
+There are more sophisticated metrics for evaluation:
+
+<img src="man/figures/evaluation_metric_methods.png" width="100%" /> We
+can apply these methods at celltype level or batch level using the
+`run_eval_metrics` function:
 
 ``` r
 results <- run_eval_metrics(pbmc.demo, 
@@ -310,3 +333,6 @@ data.frame(results)
 # lisi_median_batch     0.7707188999
 # kbet_batch            0.9715909091
 ```
+
+Next, see [Example of running and evaluating *multiple* data integration
+methods](scib_multiple_methods.md)

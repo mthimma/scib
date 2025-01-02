@@ -51,7 +51,7 @@ conda env create --name scib --file=scib_linux.yaml
 
 # Step 3: Set python path before each usage
 
-R uses the systems default Python. Therefore, we need to explicitly
+R typically uses the systems default Python. Therefore, we need to explicitly
 specify the location of the python used for `scib`.
 
 ``` r

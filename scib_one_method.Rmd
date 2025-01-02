@@ -15,6 +15,7 @@ knitr::opts_chunk$set(
 
 # SETUP
 
+Please ensure you completed: [Installation of scib and dependencies](scib_install.md).
 
 ```{r}
 pacman::p_load(tidyverse, janitor, reticulate,
@@ -206,7 +207,10 @@ print.table(tb, zero.print = ".")
 # Platelet       .   .   .   .   .   .   .   .   .   .   .  14
 ```
 
-There are several ways of estimating the performance of the data integration technique. Accuracy is one of the simpler method. 
+
+## Accuracy: a simple evaluation of data integration
+
+There are several ways of evaluation the performance of the data integration technique. One of the simpler ways is accuracy which is defined as the percentage of correctly predicted labels out of the total number of observations.
 
 1. Assign every cluster to one label using simple majority 
 
@@ -225,6 +229,7 @@ pbmc.demo$ann.harmony <- case_match(pbmc.demo$cluster.harmony,
                                     "10" ~ "DC",
                                     "11" ~ "Platelet")
 ```
+
 2. Add up the numbers that correspond to this majority based assignment: 382 + 339 + 343 + 239 + 251 + 130 + 224 + 156 + 148 + 130 + 32 + 14 which adds up to 2,388.
 
 3. Divide by the total number of cells. i.e. 2388 / 2638 which gives 90.5%.
@@ -233,10 +238,25 @@ pbmc.demo$ann.harmony <- case_match(pbmc.demo$cluster.harmony,
 100 * mean(pbmc.demo$ann.harmony == pbmc.demo$seurat_annotations)
 ```
 
-However, there are more sophisticated metrics for evaluation which we cover next.
+Aside: The UMAP cluster can be visualized with the predicted labels as follows.
+
+```{r}
+DimPlot(pbmc.demo,
+        reduction = "umap.harmony",
+        group.by  = "ann.harmony",
+        label     = TRUE) +
+  NoLegend()
+```
 
 
 ## Evaluate the data integration
+
+There are more sophisticated metrics for evaluation:
+
+```{r, echo=FALSE}
+knitr::include_graphics("man/figures/evaluation_metric_methods.png")
+```
+We can apply these methods at celltype level or batch level using the `run_eval_metrics` function:
 
 ```{r, eval = FALSE}
 results <- run_eval_metrics(pbmc.demo, 
@@ -260,3 +280,6 @@ data.frame(results)
 # lisi_median_batch     0.7707188999
 # kbet_batch            0.9715909091
 ```
+
+
+Next, see [Example of running and evaluating *multiple* data integration methods](scib_multiple_methods.md)
