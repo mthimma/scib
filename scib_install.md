@@ -45,7 +45,7 @@ effect. Next we create a conda environment with the required softwares:
 ``` bash
 curl -LJO https://raw.githubusercontent.com/mthimma/scib/refs/heads/main/scib_env_linux.yaml
 
-conda env create --name scib --file=scib_linux.yaml
+conda env create --name scib --file=scib_env_linux.yaml
 ```
 
 
