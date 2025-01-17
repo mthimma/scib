@@ -6,8 +6,9 @@ if(!require(Rcpp))      install.packages('Rcpp')
 if(!require(RcppPlanc)) install.packages('RcppPlanc', repos = 'https://welch-lab.r-universe.dev')
 
 pacman::p_load(tidyverse, janitor, remotes, reticulate, 
-               Seurat, SeuratWrappers, leidenAlg,
-               conos, harmony, rliger)
+               Seurat, leidenAlg, conos, harmony, rliger)
+
+if(!require(seurat-wrappers)) install_github("satijalab/seurat-wrappers")
 
 if(!require(scMC)) install_github("amsszlh/scMC")
 
