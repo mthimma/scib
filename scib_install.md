@@ -1,10 +1,9 @@
 # Step 1: Install the R package dependencies:
 
 ``` r
-if(!require(pacman)) install.packages("pacman")
-
-if(!require(RcppPlanc)) 
-  install.packages('RcppPlanc', repos = 'https://welch-lab.r-universe.dev')
+if(!require(pacman))    install.packages("pacman")
+if(!require(Rcpp))      install.packages('Rcpp')
+if(!require(RcppPlanc)) install.packages('RcppPlanc', repos = 'https://welch-lab.r-universe.dev')
 
 pacman::p_load(tidyverse, janitor, remotes, reticulate, 
                Seurat, SeuratWrappers, leidenAlg,
