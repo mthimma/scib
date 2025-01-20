@@ -240,7 +240,7 @@ LIGERIntegration <- function(object, ndims = NULL, new.reduction = "liger", ...)
 
   obj <- object %>%
     CreateSeuratObject() %>%
-    normalize(layer = "counts") %>%
+    rliger::normalize(layer = "counts") %>%
     selectGenes() %>%
     scaleNotCenter()
 
