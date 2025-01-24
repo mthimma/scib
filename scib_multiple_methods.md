@@ -17,7 +17,9 @@ python_binary <- conda_list() %>%
 
 use_python(python_binary, required = TRUE)
 
-conda_env <- dirname(python_binary)
+conda_env <- dirname(python_binary) %>%
+  gsub("/bin", "", .)
+
 ```
 
 # LOAD & PREPARE THE DATASET
