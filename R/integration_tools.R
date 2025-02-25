@@ -1,5 +1,6 @@
 IntegrateLayers2 <- function(object,
                              method,
+                             normalization.method = "LogNormalize",
                              orig.reduction = "pca",
                              new.reduction,
                              verbose        = FALSE,
@@ -11,13 +12,13 @@ IntegrateLayers2 <- function(object,
 
   if(method %in% c("HarmonyIntegration", "CCAIntegration", "RPCAIntegration", "FastMNNIntegration") ){
     # methods without conda env
-    out <- IntegrateLayers(object = object, method = method, orig.reduction = orig.reduction, new.reduction = new.reduction)
+    out <- IntegrateLayers(object = object, method = method, normalization.method = normalization.method, orig.reduction = orig.reduction, new.reduction = new.reduction)
   }
 
   if (method %in% c("BBKNNIntegration", "SCANORAMAIntegration", "scVIIntegration2")) {
     # methods with conda env specified
     if( is.null(conda_env) ) stop("conda_env must be specified for ", method)
-    out <-  IntegrateLayers(object = object, method = method, orig.reduction = orig.reduction, new.reduction = new.reduction,
+    out <-  IntegrateLayers(object = object, method = method, normalization.method = normalization.method, orig.reduction = orig.reduction, new.reduction = new.reduction,
                             conda_env = conda_env)
   }
 
@@ -26,7 +27,7 @@ IntegrateLayers2 <- function(object,
     if( is.null(ndims) )      stop("ndims must be specified for ", method)
     if( is.null(resolution) ) stop("resolution must be specified for ", method)
 
-    out <- IntegrateLayers(object = object, method = method, orig.reduction = orig.reduction, new.reduction = new.reduction,
+    out <- IntegrateLayers(object = object, method = method, normalization.method = normalization.method, orig.reduction = orig.reduction, new.reduction = new.reduction,
                            resolution = resolution, ndims = ndims)
 
   }
