@@ -114,7 +114,12 @@ BBKNNIntegration  <- function(object, features = NULL, layers = "counts", conda_
   ig      <- import("igraph")
 
   batches <- SeuratWrappers:::.FindBatches(object, layers = layers)
-  object <- JoinLayers(object = object, layers = "counts")
+  if (normalization.method=="SCT") {
+    object <- JoinLayers(object =object, assay = "Spatial")
+  } else {
+    object <- JoinLayers(object = object, layers = "counts")
+  }
+
 
   ## BBKNN takes all genes as input, hence no need to subset to the HVG
   adata <- sc$AnnData(X   = scipy$sparse$csr_matrix(Matrix::t(LayerData(object, layer = "counts"))),
