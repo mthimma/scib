@@ -115,7 +115,9 @@ BBKNNIntegration  <- function(object, features = NULL, layers = "counts", conda_
 
   batches <- SeuratWrappers:::.FindBatches(object, layers = layers)
   if (normalization.method=="SCT") {
-    object <- JoinLayers(object =object, assay = "Spatial")
+    object <- JoinLayers(object =object, assay = "RNA")
+    #object <- JoinLayers(object =object, assay = "SCT")
+    #object <- JoinLayers(object =object, assay = "Spatial")
   } else {
     object <- JoinLayers(object = object, layers = "counts")
   }
